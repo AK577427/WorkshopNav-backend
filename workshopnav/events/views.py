@@ -291,6 +291,21 @@ class FeedbackCreateView(APIView):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+#POST /events/{event_id}/open-feedback/ -> Facilitator opens feedback at end of session
+class OpenFeedbackView(APIView):
+
+    def post(self, request, event_id):
+        event = get_object_or_404(Event, id=event_id)
+        event.feedback_open = True
+        event.save()
+
+        return Response(
+            {
+                "message": "Feedback opened successfully.",
+                "feedback_open": event.feedback_open
+            },
+            status=status.HTTP_200_OK
+        )
 
 class EmailCaptureCreateView(APIView):
 #Get collected emails endpoint

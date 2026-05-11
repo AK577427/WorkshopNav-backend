@@ -14,6 +14,7 @@ class Event(models.Model):
     event_code = models.CharField(max_length=10, unique=True, default=generate_code)
     created_at = models.DateTimeField(auto_now_add=True)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='owned_events', on_delete=models.CASCADE)
+    feedback_open = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.title} ({self.event_code})"
