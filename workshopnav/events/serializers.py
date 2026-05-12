@@ -7,7 +7,7 @@ class EventSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Event
-        fields = ['id', 'title', 'event_code', 'created_at', 'owner']
+        fields = ['id', 'title', 'event_code', 'created_at', 'owner', 'feedback_open']
         read_only_fields = ['id', 'created_at', 'owner']
 
 # Serializer for the PollOption model
