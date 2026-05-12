@@ -34,26 +34,20 @@ class EventListCreateView(APIView):
 
 # Get event by code (public view, but edit/delete restricted to owner)
 class EventByCodeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request, code):
-        try:
-            event = Event.objects.get(event_code__iexact=code)
-        except Event.DoesNotExist:
-            return Response(
-                {"error": "Event not found with the provided code."},
-                status=status.HTTP_404_NOT_FOUND)
+        event = get_object_or_404(Event, event_code__iexact=code)
         
         serializer = EventSerializer(event)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     def put(self, request, code):
-        permission_classes = [permissions.IsAuthenticated]
+        
         if not request.user.is_authenticated:
             return Response({"error": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
         
-        try:
-            event = Event.objects.get(event_code__iexact=code)
-        except Event.DoesNotExist:
-            return Response({"error": "Event not found."}, status=status.HTTP_404_NOT_FOUND)
+        event = get_object_or_404(Event, event_code__iexact=code)
         
         if event.owner != request.user:
             return Response({"error": "You do not have permission to edit this event."}, status=status.HTTP_403_FORBIDDEN)
@@ -68,10 +62,7 @@ class EventByCodeView(APIView):
         if not request.user.is_authenticated:
             return Response({"error": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
         
-        try:
-            event = Event.objects.get(event_code__iexact=code)
-        except Event.DoesNotExist:
-            return Response({"error": "Event not found."}, status=status.HTTP_404_NOT_FOUND)
+        event = get_object_or_404(Event, event_code__iexact=code)
         
         if event.owner != request.user:
             return Response({"error": "You do not have permission to delete this event."}, status=status.HTTP_403_FORBIDDEN)
@@ -86,25 +77,16 @@ class PollListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, event_id):
-        try:
-            event = get_object_or_404(Event, id=event_id)
-        except Event.DoesNotExist:
-            return Response(
-                {"error": "Event not found."},
-                status=status.HTTP_404_NOT_FOUND)
-        
+
+        event = get_object_or_404(Event, id=event_id)
+       
         polls = event.polls.all()
         serializer = PollSerializer(polls, many=True)
         return Response(serializer.data)
 
     def post(self, request, event_id):
-        try:
-            event = get_object_or_404(Event, id=event_id)
-        except Event.DoesNotExist:
-            return Response(
-                {"error": "Event not found."},
-                status=status.HTTP_404_NOT_FOUND)
-        
+        event = get_object_or_404(Event, id=event_id)
+
         # Only event owner can create polls
         if event.owner != request.user:
             return Response(
@@ -124,23 +106,13 @@ class PollDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, poll_id):
-        try:
-            poll = Poll.objects.get(id=poll_id)
-        except Poll.DoesNotExist:
-            return Response(
-                {"error": "Poll not found."},
-                status=status.HTTP_404_NOT_FOUND)
+        poll = get_object_or_404(Poll, id=poll_id)
         
         serializer = PollSerializer(poll)
         return Response(serializer.data)
 
     def put(self, request, poll_id):
-        try:
-            poll = Poll.objects.get(id=poll_id)
-        except Poll.DoesNotExist:
-            return Response(
-                {"error": "Poll not found."},
-                status=status.HTTP_404_NOT_FOUND)
+        poll = get_object_or_404(Poll, id=poll_id)
         
         # Only event owner can update polls
         if poll.event.owner != request.user:
@@ -157,12 +129,7 @@ class PollDetailView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, poll_id):
-        try:
-            poll = Poll.objects.get(id=poll_id)
-        except Poll.DoesNotExist:
-            return Response(
-                {"error": "Poll not found."},
-                status=status.HTTP_404_NOT_FOUND)
+        poll = get_object_or_404(Poll, id=poll_id)
         
         # Only event owner can delete polls
         if poll.event.owner != request.user:
@@ -178,12 +145,7 @@ class PollDetailView(APIView):
 class PollResponseCreateView(APIView):
 
     def get(self, request, poll_id):
-        try:
-            poll = Poll.objects.get(id=poll_id)
-        except Poll.DoesNotExist:
-            return Response(
-                {"error": "Poll not found."},
-                status=status.HTTP_404_NOT_FOUND)
+        poll = get_object_or_404(Poll, id=poll_id)
         
         self.responses = poll.responses.all()
         serializer = PollResponseSerializer(self.responses, many=True)
@@ -191,12 +153,7 @@ class PollResponseCreateView(APIView):
 
 
     def post(self, request, poll_id):
-        try:
-            poll = Poll.objects.get(id=poll_id)
-        except Poll.DoesNotExist:
-            return Response(
-                {"error": "Poll not found."},
-                status=status.HTTP_404_NOT_FOUND)
+        poll = get_object_or_404(Poll, id=poll_id)
         
         if not poll.is_active:
             return Response(
@@ -206,7 +163,7 @@ class PollResponseCreateView(APIView):
         serializer = PollResponseSerializer(data=request.data, context={'poll': poll})
 
         if serializer.is_valid():
-            serializer.save(poll_id=poll_id)
+            serializer.save(poll=poll)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -215,12 +172,7 @@ class PollResponseCreateView(APIView):
 class PollResultsView(APIView):
 
     def get(self, request, poll_id):
-        try:
-            poll = Poll.objects.get(id=poll_id)
-        except Poll.DoesNotExist:
-            return Response(
-                {"error": "Poll not found."},
-                status=status.HTTP_404_NOT_FOUND)
+        poll = get_object_or_404(Poll, id=poll_id)
         
         # options = poll.options.all()
         # results = {}
@@ -249,24 +201,14 @@ class PollResultsView(APIView):
 class QuestionListCreateView(APIView):
 
     def get(self, request, event_id):
-        try:
-            event = Event.objects.get(id=event_id)
-        except Event.DoesNotExist:
-            return Response(
-                {"error": "Event not found."},
-                status=status.HTTP_404_NOT_FOUND)
+        event = get_object_or_404(Event, id=event_id)
         
         questions = event.questions.all()
         serializer = QuestionSerializer(questions, many=True)
         return Response(serializer.data)
 
     def post(self, request, event_id):
-        try:
-            event = Event.objects.get(id=event_id)
-        except Event.DoesNotExist:
-            return Response(
-                {"error": "Event not found."},
-                status=status.HTTP_404_NOT_FOUND)
+        event = get_object_or_404(Event, id=event_id)
 
         serializer = QuestionSerializer(data=request.data)
 
@@ -280,23 +222,13 @@ class QuestionListCreateView(APIView):
 class QuestionUpvoteView(APIView):
 
     def get(self, request, question_id):
-        try:
-            question = Question.objects.get(id=question_id)
-        except Question.DoesNotExist:
-            return Response(
-                {"error": "Question not found."},
-                status=status.HTTP_404_NOT_FOUND)
+        question = get_object_or_404(Question, id=question_id)
         
         serializer = QuestionSerializer(question)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def patch(self, request, question_id):
-        try:
-            question = Question.objects.get(id=question_id)
-        except Question.DoesNotExist:
-            return Response(
-                {"error": "Question not found."},
-                status=status.HTTP_404_NOT_FOUND)
+        question = get_object_or_404(Question, id=question_id)
         
         question.upvotes += 1
         question.save()
@@ -306,12 +238,7 @@ class QuestionUpvoteView(APIView):
 class QuestionVisibilityView(APIView):
 
     def post(self, request, question_id):
-        try:
-            question = Question.objects.get(id=question_id)
-        except Question.DoesNotExist:
-            return Response(
-                {"error": "Question not found."},
-                status=status.HTTP_404_NOT_FOUND)
+        question = get_object_or_404(Question, id=question_id)
         
         question.visible = not question.visible
         question.save()
@@ -330,13 +257,7 @@ class FeedbackCreateView(APIView):
 
 #POST /events/:id/feedback/ -> User submits feedback
     def post(self, request, event_id):
-        try:
-            event = get_object_or_404(Event, id=event_id)
-        except Event.DoesNotExist:
-            return Response(
-                {"error": "Event not found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
+        event = get_object_or_404(Event, id=event_id)
         
         serializer = FeedbackSerializer(data=request.data)
 
