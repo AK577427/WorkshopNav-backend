@@ -12,10 +12,15 @@ class EventSerializer(serializers.ModelSerializer):
 
 # Serializer for the PollOption model
 class PollOptionSerializer(serializers.ModelSerializer):
+    response_count = serializers.SerializerMethodField()
+
     class Meta:
         model = PollOption
-        fields = ['id', 'option_text', 'created_at']
+        fields = ['id', 'option_text', 'created_at', 'response_count']
         read_only_fields = ['id', 'created_at']
+
+    def get_response_count(self, obj):
+        return obj.responses.count()
 
 # Serializer for the Poll model
 class PollSerializer(serializers.ModelSerializer):
@@ -25,16 +30,20 @@ class PollSerializer(serializers.ModelSerializer):
     )
 
     poll_options = PollOptionSerializer(many=True, read_only=True, source='options')
+    total_responses = serializers.SerializerMethodField()
     class Meta:
         model = Poll
-        fields = ['id', 'question', 'created_at', 'is_active', 'options' , 'poll_options' ] #'poll_code',
+        fields = ['id', 'question', 'created_at', 'is_active', 'options' , 'poll_options', 'total_responses'] #'poll_code',
         read_only_fields = ['id', 'created_at'] 
     
     def validate_options(self, value):
         if not value or len(value) == 0:
             raise serializers.ValidationError("At least one option is required to create a poll.")
         return value
-    
+
+    def get_total_responses(self, obj):
+        return obj.responses.count()
+
     def create(self, validated_data):
         options_data = validated_data.pop('options', [])
         poll = Poll.objects.create(**validated_data)
@@ -50,8 +59,8 @@ class PollSerializer(serializers.ModelSerializer):
         if options_data is not None:
             instance.options.all().delete()
             for option_text in options_data:
-                PollOption.objects.create(poll=instance, option_text=option_text)
-                instance.save()
+                PollOption.objects.create(poll=instance, text=option_text)
+        instance.save()
 
         return instance
 
@@ -61,8 +70,17 @@ class PollResponseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PollResponse
-        fields = ['id', 'option', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = ['id', 'option', 'created_at', 'submitted_at', 'session_id']
+        read_only_fields = ['id', 'created_at', 'submitted_at', 'session_id']
+
+    def create(self, validated_data):
+        poll = self.context.get('poll')
+        session_id = self.context.get('session_id')
+
+        validated_data['poll'] = poll
+        validated_data['session_id'] = session_id
+
+        return PollResponse.objects.create(**validated_data)
 
     def validate_option(self, value):
         poll = self.context.get('poll')
