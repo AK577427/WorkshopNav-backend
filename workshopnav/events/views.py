@@ -110,12 +110,15 @@ class FacilitatorEventDetailView(EventOwnerMixin, APIView):
 #GET /events/{event_id}/polls/ - get all polls for the event (public)
 #POST /events/{event_id}/polls/ - create a new poll (event owner only)
 class PollListCreateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
 
     def get(self, request, event_id):
-
-        event = get_object_or_404(Event, id=event_id)
-       
+        event = get_object_or_404(Event, id=event_id)    
         polls = event.polls.all()
         serializer = PollSerializer(polls, many=True)
         return Response(serializer.data)
@@ -139,7 +142,12 @@ class PollListCreateView(APIView):
 
 # update & delete polls
 class PollDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
 
     def get(self, request, poll_id):
         poll = get_object_or_404(Poll, id=poll_id)
